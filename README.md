@@ -76,18 +76,30 @@ The server starts on port `80` by default.
 
 ## Configuration
 
+Copy `.env.example` to `.env` and set your values before starting the server:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `ADMIN_PASSWORD` | `admin` | Password for the admin dashboard |
+| `SESSION_SECRET` | fallback string | Sign session cookies — use a long random string in production |
+| `PORT` | `80` | HTTP port |
+
+Generate a strong session secret:
+```bash
+openssl rand -base64 32
+```
+
+Other settings:
+
 | Setting | Default | Notes |
 |---------|---------|-------|
-| `PORT` | `80` | Set via environment variable |
-| Admin password | `admin` | Change `ADMIN_PASSWORD_HASH` in `server.js` |
 | Session duration | 24 hours | 30 days with "Remember Me" |
 | Pairing code expiry | 60 seconds | Hardcoded in `server.js` |
-
-To change the admin password, update the `bcrypt.hashSync(...)` call near the top of `server.js`:
-
-```js
-const ADMIN_PASSWORD_HASH = bcrypt.hashSync('your-new-password', 10);
-```
+| Login lockout | 5 attempts / 15 min | Hardcoded in `server.js` |
 
 ## iOS Notes
 
@@ -105,6 +117,6 @@ Avoid opening the camera client inside in-app browsers (Instagram, Facebook, etc
 ## Tech Stack
 
 - **Backend:** Node.js, Express, Socket.IO
-- **Auth:** express-session, bcrypt
+- **Auth:** express-session, bcrypt, dotenv
 - **Frontend:** Vanilla JS, CSS3 (glassmorphism theme)
 - **Protocol:** HTTP + WebSocket (Socket.IO)
