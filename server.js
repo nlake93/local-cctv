@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const http = require('http');
@@ -8,9 +9,8 @@ const bcrypt = require('bcrypt');
 const app = express();
 const PORT = process.env.PORT || 80;
 
-// Admin password (hashed) - Change this to your desired password
-// Default password: "admin"
-const ADMIN_PASSWORD_HASH = bcrypt.hashSync('admin', 10);
+// Hashed at startup from env variable — set ADMIN_PASSWORD in your .env file
+let ADMIN_PASSWORD_HASH;
 
 // Store active camera connections
 const activeCameras = new Map();
@@ -46,7 +46,7 @@ function recordFailedLogin(ip) {
 
 // Session configuration
 app.use(session({
-    secret: 'camera-monitor-secret-key-' + Math.random().toString(36),
+    secret: process.env.SESSION_SECRET || 'change-me-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -146,11 +146,18 @@ const io = socketIo(httpServer, {
     }
 });
 
-httpServer.listen(PORT, () => {
-    console.log(`🚀 HTTP Server running on port ${PORT}`);
-    console.log(`📱 Camera App: http://localhost:${PORT}`);
-    console.log(`📱 Admin Dashboard: http://localhost:${PORT}/admin`);
-});
+async function startServer() {
+    const password = process.env.ADMIN_PASSWORD || 'admin';
+    ADMIN_PASSWORD_HASH = await bcrypt.hash(password, 10);
+
+    httpServer.listen(PORT, () => {
+        console.log(`🚀 HTTP Server running on port ${PORT}`);
+        console.log(`📱 Camera App: http://localhost:${PORT}`);
+        console.log(`📱 Admin Dashboard: http://localhost:${PORT}/admin`);
+    });
+}
+
+startServer();
 
 // Unified Socket.IO connection handling
 io.on('connection', (socket) => {
