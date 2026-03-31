@@ -1,0 +1,27 @@
+{
+  "name": "ios-camera-web-server",
+  "version": "1.0.0",
+  "description": "Simple web server with camera access for iOS devices",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "express": "^4.18.2",
+    "express-session": "^1.18.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "camera",
+    "ios",
+    "web",
+    "server"
+  ],
+  "author": "",
+  "license": "MIT"
+}

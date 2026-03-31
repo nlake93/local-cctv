@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Camera streaming client">
+    
+    <title>Camera Stream</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        
+        <!-- Zoom Controls -->
+        <div id="zoomControls" class="zoom-controls" style="display: none;">
+            <div class="zoom-info">
+                <span id="zoomValue">1.0x</span>
+            </div>
+            <input type="range" id="zoomSlider" min="1" max="10" step="0.1" value="1" class="zoom-slider">
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="startCamera" class="btn primary">Start Camera</button>
+        <button id="switchCamera" class="btn primary" style="display: none;">Switch Camera</button>
+        <button id="toggleCameraView" class="btn secondary" style="display: none;">Hide Camera View</button>
+        <button id="flashlightBtn" class="btn secondary" style="display: none;">Flash</button>
+        <button id="stopBtn" class="btn secondary" style="display: none;">Stop</button>
+    </div>
+
+    <!-- Pairing Modal -->
+    <div id="pairingModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 20px; text-align: center; color: var(--text-primary);">Enter Pairing Code</h2>
+            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 24px;">
+                Enter the 3-digit code shown on the admin dashboard
+            </p>
+            <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+                <input type="text" id="pairingCode" maxlength="3" pattern="[0-9]*" 
+                       style="width: 150px; text-align: center; font-size: 2em; padding: 16px; 
+                              background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); 
+                              border-radius: 8px; color: var(--text-primary);" 
+                       placeholder="000" autocomplete="off">
+            </div>
+            <div id="pairingError" style="color: #ef4444; text-align: center; margin-bottom: 16px; display: none;"></div>
+            <div style="display: flex; gap: 12px; width: 100%;">
+                <button id="cancelPairing" class="btn secondary" style="flex: 1;">Cancel</button>
+                <button id="submitPairing" class="btn primary" style="flex: 1;">Connect</button>
+            </div>
+            <div id="pairingTimer" style="text-align: center; margin-top: 16px; color: var(--text-dim); font-size: 0.9em;"></div>
+        </div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="camera.js"></script>
+</body>
+</html>
