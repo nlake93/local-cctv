@@ -860,6 +860,102 @@ body {
     }
 }
 
+/* Toast / notification components */
+.toast {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    border-radius: 12px;
+    z-index: 1000;
+    animation: slideInRight 0.3s ease-out;
+}
+
+.toast.is-removing {
+    animation: slideOutRight 0.3s ease-in;
+}
+
+.toast--pairing {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid var(--accent);
+    padding: 20px;
+    min-width: 300px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px var(--accent-glow);
+}
+
+.toast__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.toast__title {
+    margin: 0;
+    color: var(--accent);
+}
+
+.toast__device {
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.toast__code-wrap {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.toast__code-label {
+    font-size: 0.85em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+}
+
+.toast__code {
+    font-size: 3em;
+    font-weight: bold;
+    color: var(--accent);
+    letter-spacing: 8px;
+    font-family: monospace;
+}
+
+.toast__expiry {
+    font-size: 0.8em;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+.toast--success {
+    background: rgba(16, 185, 129, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid #10b981;
+    padding: 16px 20px;
+    color: #10b981;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+.notification-disconnect {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid #ef4444;
+    border-radius: 12px;
+    padding: 24px 32px;
+    color: white;
+    font-size: 1.2em;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.5);
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
 /* Pairing notification animations */
 @keyframes slideInRight {
     from {

@@ -18,6 +18,32 @@ const activeCameras = new Map();
 // Store pending camera pairing requests
 const pairingRequests = new Map();
 
+// Simple in-memory rate limiter for login attempts
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+function checkLoginRateLimit(ip) {
+    const now = Date.now();
+    const record = loginAttempts.get(ip);
+    if (!record || now > record.resetAt) {
+        loginAttempts.delete(ip);
+        return { limited: false };
+    }
+    if (record.count >= MAX_LOGIN_ATTEMPTS) {
+        const retryAfter = Math.ceil((record.resetAt - now) / 1000);
+        return { limited: true, retryAfter };
+    }
+    return { limited: false };
+}
+
+function recordFailedLogin(ip) {
+    const now = Date.now();
+    const record = loginAttempts.get(ip) || { count: 0, resetAt: now + LOCKOUT_DURATION };
+    record.count++;
+    loginAttempts.set(ip, record);
+}
+
 // Session configuration
 app.use(session({
     secret: 'camera-monitor-secret-key-' + Math.random().toString(36),
@@ -45,12 +71,23 @@ function requireAuth(req, res, next) {
 
 // Login route
 app.post('/login', async (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress;
+    const rateCheck = checkLoginRateLimit(ip);
+
+    if (rateCheck.limited) {
+        return res.status(429).json({
+            success: false,
+            message: `Too many login attempts. Try again in ${Math.ceil(rateCheck.retryAfter / 60)} minutes.`
+        });
+    }
+
     const { password, rememberMe } = req.body;
     
     try {
         const isValid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
         
         if (isValid) {
+            loginAttempts.delete(ip); // Clear attempts on successful login
             req.session.isAuthenticated = true;
             
             // Extend session if remember me is checked
@@ -60,6 +97,7 @@ app.post('/login', async (req, res) => {
             
             res.json({ success: true });
         } else {
+            recordFailedLogin(ip);
             res.status(401).json({ success: false, message: 'Invalid password' });
         }
     } catch (error) {
@@ -303,6 +341,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
         activeCameras.delete(socket.id);
+        pairingRequests.delete(socket.id); // Bug 4: clean up any pending pairing request
         
         // Notify all admin clients about camera removal
         io.emit('camera-list-update', Array.from(activeCameras.values()));

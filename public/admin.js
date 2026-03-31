@@ -123,6 +123,7 @@ class AdminDashboard {
     createCameraCard(camera) {
         const card = document.createElement('div');
         card.className = 'camera-card';
+        card.dataset.cameraId = camera.id; // Bug 2: needed so disconnectCamera() can find the card
         card.innerHTML = `
             <div class="camera-video" id="video-${camera.id}">
                 <span>Waiting for stream...</span>
@@ -221,7 +222,18 @@ class AdminDashboard {
         }
     }
 
-    // updateActiveStreamsCount removed
+    checkNoCameras() { // Bug 1: show placeholder when all cameras are gone
+        const grid = document.getElementById('cameraGrid');
+        if (this.cameras.size === 0) {
+            grid.className = 'camera-grid';
+            grid.innerHTML = `
+                <div class="no-cameras">
+                    <p>No cameras connected</p>
+                    <p style="font-size: 0.85em; margin-top: 12px; color: var(--text-dim);">Open the camera app on a device to see it here</p>
+                </div>
+            `;
+        }
+    }
 
     formatTime(timestamp) {
         const date = new Date(timestamp);
@@ -234,39 +246,18 @@ class AdminDashboard {
         
         const notification = document.createElement('div');
         notification.id = `pairing-${data.socketId}`;
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 2px solid var(--accent);
-            border-radius: 12px;
-            padding: 20px;
-            min-width: 300px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px var(--accent-glow);
-            animation: slideInRight 0.3s ease-out;
-            z-index: 1000;
-        `;
-        
+        notification.className = 'toast toast--pairing';
+
         notification.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <h3 style="margin: 0; color: var(--accent);">Camera Pairing</h3>
+            <div class="toast__header">
+                <h3 class="toast__title">Camera Pairing</h3>
             </div>
-            <div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 0.9em;">
-                ${data.deviceInfo}
+            <div class="toast__device">${data.deviceInfo}</div>
+            <div class="toast__code-wrap">
+                <div class="toast__code-label">Show this code to camera:</div>
+                <div class="toast__code">${data.code}</div>
             </div>
-            <div style="text-align: center; margin: 20px 0;">
-                <div style="font-size: 0.85em; color: var(--text-dim); margin-bottom: 8px;">
-                    Show this code to camera:
-                </div>
-                <div style="font-size: 3em; font-weight: bold; color: var(--accent); letter-spacing: 8px; font-family: monospace;">
-                    ${data.code}
-                </div>
-            </div>
-            <div style="font-size: 0.8em; color: var(--text-dim); text-align: center;">
-                Expires in 60 seconds
-            </div>
+            <div class="toast__expiry">Expires in 60 seconds</div>
         `;
         
         document.body.appendChild(notification);
@@ -280,7 +271,7 @@ class AdminDashboard {
     removePairingRequest(socketId) {
         const notification = document.getElementById(`pairing-${socketId}`);
         if (notification) {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            notification.classList.add('is-removing');
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.parentNode.removeChild(notification);
@@ -297,26 +288,13 @@ class AdminDashboard {
         
         // Show success notification
         const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: rgba(16, 185, 129, 0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid #10b981;
-            border-radius: 12px;
-            padding: 16px 20px;
-            color: #10b981;
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-            animation: slideInRight 0.3s ease-out;
-            z-index: 1000;
-        `;
+        notification.className = 'toast toast--success';
         
         notification.textContent = `✓ ${camera.name} connected`;
         document.body.appendChild(notification);
         
         setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            notification.classList.add('is-removing');
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.parentNode.removeChild(notification);

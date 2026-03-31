@@ -4,11 +4,11 @@ class CameraApp {
         this.canvas = document.getElementById('canvas');
         this.controls = document.querySelector('.controls');
         
-    this.startBtn = document.getElementById('startCamera');
-    this.switchBtn = document.getElementById('switchCamera');
-    this.toggleViewBtn = document.getElementById('toggleCameraView');
-    this.flashlightBtn = document.getElementById('flashlightBtn');
-    this.stopBtn = document.getElementById('stopBtn');
+        this.startBtn = document.getElementById('startCamera');
+        this.switchBtn = document.getElementById('switchCamera');
+        this.toggleViewBtn = document.getElementById('toggleCameraView');
+        this.flashlightBtn = document.getElementById('flashlightBtn');
+        this.stopBtn = document.getElementById('stopBtn');
     
         // Zoom controls
         this.zoomControls = document.getElementById('zoomControls');
@@ -147,23 +147,7 @@ class CameraApp {
 
     showDisconnectNotification() {
         const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(239, 68, 68, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid #ef4444;
-            border-radius: 12px;
-            padding: 24px 32px;
-            color: white;
-            font-size: 1.2em;
-            font-weight: 600;
-            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.5);
-            z-index: 10000;
-            animation: fadeIn 0.3s ease;
-        `;
+        notification.className = 'notification-disconnect';
         notification.textContent = 'Disconnected by admin';
         document.body.appendChild(notification);
         
@@ -179,7 +163,7 @@ class CameraApp {
         this.switchBtn.addEventListener('click', () => this.switchCamera());
         this.toggleViewBtn.addEventListener('click', () => this.toggleCameraView());
         this.flashlightBtn.addEventListener('click', () => this.toggleFlashlight());
-        this.stopBtn.addEventListener('click', () => this.stopAndReload());
+        this.stopBtn.addEventListener('click', () => window.location.reload());
         
         // Zoom slider
         this.zoomSlider.addEventListener('input', (e) => this.handleZoomChange(e.target.value));
@@ -530,31 +514,6 @@ class CameraApp {
         });
     }
 
-    showQualityChangeNotification(quality) {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #10b981;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: bold;
-            z-index: 1000;
-            animation: fadeInOut 2s ease-in-out;
-        `;
-        notification.textContent = `📹 Quality: ${quality.toUpperCase()}`;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 2000);
-    }
-
     async initializeCameraCapabilities() {
         try {
             if (!this.stream) return;
@@ -635,10 +594,6 @@ class CameraApp {
         }
     }
 
-    stopAndReload() {
-        // Reload the page to disconnect and reset everything
-        window.location.reload();
-    }
 
 }
 
