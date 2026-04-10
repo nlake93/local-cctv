@@ -198,14 +198,16 @@ class AdminDashboard {
             videoContainer.appendChild(img);
         }
 
-        // Update the image source with the new frame
-        img.src = `data:image/jpeg;base64,${data.frame}`;
+        // Revoke previous blob URL to free memory, then create new one
+        if (img._blobUrl) URL.revokeObjectURL(img._blobUrl);
+        const blob = new Blob([data.frame], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+        img._blobUrl = url;
+        img.src = url;
         
         // Update aspect ratio if dimensions are provided
         if (data.width && data.height) {
-            const aspectRatio = data.width / data.height;
             img.style.aspectRatio = `${data.width} / ${data.height}`;
-            // Store dimensions for reference
             img.dataset.width = data.width;
             img.dataset.height = data.height;
         }
@@ -214,7 +216,11 @@ class AdminDashboard {
         if (enlargedCameraId === data.cameraId) {
             const modalImg = document.getElementById('modalImage');
             if (modalImg) {
-                modalImg.src = img.src;
+                if (modalImg._blobUrl) URL.revokeObjectURL(modalImg._blobUrl);
+                const modalBlob = new Blob([data.frame], { type: 'image/jpeg' });
+                const modalUrl = URL.createObjectURL(modalBlob);
+                modalImg._blobUrl = modalUrl;
+                modalImg.src = modalUrl;
                 if (data.width && data.height) {
                     modalImg.style.aspectRatio = `${data.width} / ${data.height}`;
                 }
@@ -399,7 +405,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeModal() {
         if (modal) {
             modal.style.display = 'none';
-            document.getElementById('modalImage').src = '';
+            const modalImg = document.getElementById('modalImage');
+            if (modalImg) {
+                if (modalImg._blobUrl) URL.revokeObjectURL(modalImg._blobUrl);
+                modalImg._blobUrl = null;
+                modalImg.src = '';
+            }
             enlargedCameraId = null;
         }
     }

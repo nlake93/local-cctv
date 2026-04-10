@@ -477,17 +477,24 @@ class CameraApp {
             // Back camera - draw normally
             context.drawImage(this.video, 0, 0, this.streamCanvas.width, this.streamCanvas.height);
         }
-        // Convert to base64 and send with current quality and dimensions
+
         const quality = this.qualitySettings[this.currentQuality].quality;
-        const frameData = this.streamCanvas.toDataURL('image/jpeg', quality);
-        const base64Frame = frameData.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-        this.socket.emit('video-stream', {
-            frame: base64Frame,
-            timestamp: Date.now(),
-            quality: this.currentQuality,
-            width: this.streamCanvas.width,
-            height: this.streamCanvas.height
-        });
+        const width = this.streamCanvas.width;
+        const height = this.streamCanvas.height;
+
+        // Send raw binary instead of base64 (~33% less data)
+        this.streamCanvas.toBlob((blob) => {
+            if (!blob || !this.streamingToAdmin) return;
+            blob.arrayBuffer().then((buffer) => {
+                this.socket.emit('video-stream', {
+                    frame: buffer,
+                    timestamp: Date.now(),
+                    quality: this.currentQuality,
+                    width,
+                    height
+                });
+            });
+        }, 'image/jpeg', quality);
     }
 
     changeStreamQuality(newQuality) {

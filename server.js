@@ -170,6 +170,8 @@ io.on('connection', (socket) => {
 
     // Handle camera pairing request
     socket.on('request-pairing', (data) => {
+        socket.join('cameras');
+
         const pairingCode = generatePairingCode();
         const pairingRequest = {
             socketId: socket.id,
@@ -183,7 +185,7 @@ io.on('connection', (socket) => {
         console.log(`Pairing request from ${socket.id}, code: ${pairingCode}`);
         
         // Notify all admin clients about pairing request
-        io.emit('pairing-request', {
+        io.to('admins').emit('pairing-request', {
             socketId: socket.id,
             code: pairingCode,
             deviceInfo: pairingRequest.deviceInfo
@@ -194,7 +196,7 @@ io.on('connection', (socket) => {
             if (pairingRequests.has(socket.id)) {
                 pairingRequests.delete(socket.id);
                 socket.emit('pairing-expired');
-                io.emit('pairing-expired', { socketId: socket.id });
+                io.to('admins').emit('pairing-expired', { socketId: socket.id });
                 console.log(`Pairing code ${pairingCode} expired`);
             }
         }, 60000);
@@ -230,8 +232,8 @@ io.on('connection', (socket) => {
             activeCameras.set(socket.id, cameraInfo);
             
             socket.emit('pairing-success');
-            io.emit('camera-paired', cameraInfo);
-            io.emit('camera-list-update', Array.from(activeCameras.values()));
+            io.to('admins').emit('camera-paired', cameraInfo);
+            io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
             
             console.log(`Camera ${socket.id} paired successfully`);
         } else {
@@ -241,6 +243,8 @@ io.on('connection', (socket) => {
 
     // Handle camera registration (legacy - for backward compatibility)
     socket.on('register-camera', (data) => {
+        socket.join('cameras');
+
         const cameraInfo = {
             id: socket.id,
             name: data.name || `Camera ${socket.id.substring(0, 6)}`,
@@ -252,13 +256,13 @@ io.on('connection', (socket) => {
         console.log('Camera registered:', cameraInfo);
         
         // Notify all admin clients about new camera
-        io.emit('camera-list-update', Array.from(activeCameras.values()));
+        io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
     });
 
     // Handle video stream from camera
     socket.on('video-stream', (data) => {
-        // Forward video stream to all admin clients
-        socket.broadcast.emit('video-frame', {
+        // Forward video stream to admin clients only
+        io.to('admins').emit('video-frame', {
             cameraId: socket.id,
             frame: data.frame,
             timestamp: data.timestamp,
@@ -289,7 +293,7 @@ io.on('connection', (socket) => {
         console.log(`Camera ${socket.id} confirmed quality change to ${data.quality}`);
         
         // Notify all admin clients about the quality change
-        io.emit('stream-quality-changed', {
+        io.to('admins').emit('stream-quality-changed', {
             cameraId: socket.id,
             quality: data.quality
         });
@@ -297,6 +301,7 @@ io.on('connection', (socket) => {
 
     // Handle admin requesting camera list
     socket.on('get-camera-list', () => {
+        socket.join('admins');
         socket.emit('camera-list-update', Array.from(activeCameras.values()));
     });
 
@@ -338,7 +343,7 @@ io.on('connection', (socket) => {
             targetSocket.disconnect(true);
             
             // Notify all admin clients about camera removal
-            io.emit('camera-list-update', Array.from(activeCameras.values()));
+            io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
         } else {
             console.log(`Camera ${cameraId} not found for disconnect request`);
         }
@@ -351,6 +356,6 @@ io.on('connection', (socket) => {
         pairingRequests.delete(socket.id); // Bug 4: clean up any pending pairing request
         
         // Notify all admin clients about camera removal
-        io.emit('camera-list-update', Array.from(activeCameras.values()));
+        io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
     });
 });
