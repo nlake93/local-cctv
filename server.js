@@ -5,6 +5,9 @@ const http = require('http');
 const socketIo = require('socket.io');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 80;
@@ -17,6 +20,13 @@ const activeCameras = new Map();
 
 // Store pending camera pairing requests
 const pairingRequests = new Map();
+
+// RTSP camera management
+const CAMERAS_FILE = path.join(__dirname, 'cameras.json');
+const rtspProcesses = new Map();
+const rtspRetries = new Map();
+const RTSP_MAX_RETRIES = 10;
+const RTSP_RETRY_INTERVAL = 5000; // 5s base, scales with retry count
 
 // Simple in-memory rate limiter for login attempts
 const loginAttempts = new Map();
@@ -44,6 +54,189 @@ function recordFailedLogin(ip) {
     loginAttempts.set(ip, record);
 }
 
+// --- Camera Registry ---
+
+function loadCameraRegistry() {
+    try {
+        if (fs.existsSync(CAMERAS_FILE)) {
+            const data = fs.readFileSync(CAMERAS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (err) {
+        console.error('Error loading camera registry:', err.message);
+    }
+    return { cameras: [] };
+}
+
+function saveCameraRegistry(registry) {
+    try {
+        fs.writeFileSync(CAMERAS_FILE, JSON.stringify(registry, null, 2));
+    } catch (err) {
+        console.error('Error saving camera registry:', err.message);
+    }
+}
+
+// --- RTSP Stream Management ---
+
+function startRtspStream(camera) {
+    if (rtspProcesses.has(camera.id)) {
+        stopRtspStream(camera.id);
+    }
+
+    console.log(`Starting RTSP stream for "${camera.name}" (${camera.id})`);
+
+    const args = [
+        '-loglevel', 'warning',
+        '-rtsp_transport', 'tcp',
+        '-i', camera.url,
+        '-f', 'image2pipe',
+        '-vf', 'fps=10',
+        '-q:v', '5',
+        '-vcodec', 'mjpeg',
+        '-an',
+        'pipe:1'
+    ];
+
+    const ffmpeg = spawn('ffmpeg', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    let buffer = Buffer.alloc(0);
+    let receivedFirstFrame = false;
+
+    ffmpeg.stdout.on('data', (chunk) => {
+        buffer = Buffer.concat([buffer, chunk]);
+
+        // Parse JPEG frames (SOI: 0xFFD8, EOI: 0xFFD9)
+        while (true) {
+            const soiIndex = buffer.indexOf(Buffer.from([0xFF, 0xD8]));
+            if (soiIndex === -1) break;
+
+            const eoiIndex = buffer.indexOf(Buffer.from([0xFF, 0xD9]), soiIndex + 2);
+            if (eoiIndex === -1) break;
+
+            const frame = buffer.slice(soiIndex, eoiIndex + 2);
+            buffer = buffer.slice(eoiIndex + 2);
+
+            if (!receivedFirstFrame) {
+                receivedFirstFrame = true;
+                rtspRetries.set(camera.id, { count: 0 });
+                const info = activeCameras.get(camera.id);
+                if (info) {
+                    info.status = 'connected';
+                    io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+                }
+                console.log(`RTSP stream connected: "${camera.name}"`);
+            }
+
+            io.to('admins').emit('video-frame', {
+                cameraId: camera.id,
+                frame: frame,
+                timestamp: Date.now(),
+                width: null,
+                height: null
+            });
+        }
+
+        // Prevent buffer from growing unbounded
+        if (buffer.length > 5 * 1024 * 1024) {
+            buffer = Buffer.alloc(0);
+        }
+    });
+
+    ffmpeg.stderr.on('data', (data) => {
+        const msg = data.toString().trim();
+        if (msg) console.warn(`FFmpeg [${camera.name}]: ${msg}`);
+    });
+
+    ffmpeg.on('error', (err) => {
+        if (err.code === 'ENOENT') {
+            console.error('FFmpeg is not installed. RTSP support requires FFmpeg.');
+            console.error('Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)');
+        }
+        rtspProcesses.delete(camera.id);
+        const info = activeCameras.get(camera.id);
+        if (info) {
+            info.status = 'error';
+            io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+        }
+    });
+
+    ffmpeg.on('close', (code) => {
+        console.log(`FFmpeg for "${camera.name}" exited (code ${code})`);
+        rtspProcesses.delete(camera.id);
+
+        const info = activeCameras.get(camera.id);
+        if (info) {
+            info.status = 'disconnected';
+            io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+        }
+
+        // Auto-retry if camera is still in registry
+        const registry = loadCameraRegistry();
+        const stillRegistered = registry.cameras.find(c => c.id === camera.id);
+        if (stillRegistered) {
+            const retryState = rtspRetries.get(camera.id) || { count: 0 };
+            retryState.count++;
+            rtspRetries.set(camera.id, retryState);
+
+            if (retryState.count <= RTSP_MAX_RETRIES) {
+                const delay = Math.min(RTSP_RETRY_INTERVAL * retryState.count, 60000);
+                console.log(`Retrying "${camera.name}" in ${delay / 1000}s (attempt ${retryState.count}/${RTSP_MAX_RETRIES})`);
+                setTimeout(() => {
+                    if (!rtspProcesses.has(camera.id)) {
+                        startRtspStream(stillRegistered);
+                    }
+                }, delay);
+            } else {
+                console.log(`Max retries reached for "${camera.name}". Use dashboard to reconnect.`);
+                if (info) {
+                    info.status = 'offline';
+                    io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+                }
+            }
+        }
+    });
+
+    rtspProcesses.set(camera.id, ffmpeg);
+
+    activeCameras.set(camera.id, {
+        id: camera.id,
+        name: camera.name,
+        type: 'rtsp',
+        status: 'connecting',
+        timestamp: new Date().toISOString()
+    });
+
+    io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+}
+
+function stopRtspStream(cameraId) {
+    rtspRetries.delete(cameraId);
+    const proc = rtspProcesses.get(cameraId);
+    if (proc) {
+        proc.kill('SIGTERM');
+        rtspProcesses.delete(cameraId);
+    }
+    activeCameras.delete(cameraId);
+}
+
+function stopAllRtspStreams() {
+    for (const [, proc] of rtspProcesses) {
+        proc.kill('SIGTERM');
+    }
+    rtspProcesses.clear();
+    rtspRetries.clear();
+}
+
+function reconnectRegisteredCameras() {
+    const registry = loadCameraRegistry();
+    if (registry.cameras.length === 0) return;
+
+    console.log(`Reconnecting ${registry.cameras.length} registered RTSP camera(s)...`);
+    for (const camera of registry.cameras) {
+        startRtspStream(camera);
+    }
+}
+
 // Session configuration
 app.use(session({
     secret: process.env.SESSION_SECRET || 'change-me-in-production',
@@ -62,8 +255,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Authentication middleware
 function requireAuth(req, res, next) {
-    if (req.session.isAuthenticated) {
+    if (req.session && req.session.isAuthenticated) {
         next();
+    } else if (req.path.startsWith('/api/')) {
+        res.status(401).json({ success: false, message: 'Not authenticated' });
     } else {
         res.redirect('/login.html');
     }
@@ -137,6 +332,118 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// --- RTSP Camera API Routes (protected) ---
+
+// Add an RTSP camera
+app.post('/api/cameras/rtsp', requireAuth, (req, res) => {
+    const { name, url } = req.body;
+
+    if (!url || !url.startsWith('rtsp://')) {
+        return res.status(400).json({ success: false, message: 'A valid RTSP URL is required (rtsp://...)' });
+    }
+
+    const cameraName = (name || '').trim() || 'RTSP Camera';
+    const id = `rtsp-${crypto.randomUUID().split('-')[0]}`;
+
+    const camera = {
+        id,
+        name: cameraName,
+        type: 'rtsp',
+        url,
+        addedAt: new Date().toISOString()
+    };
+
+    // Save to registry
+    const registry = loadCameraRegistry();
+    registry.cameras.push(camera);
+    saveCameraRegistry(registry);
+
+    // Start the stream
+    startRtspStream(camera);
+
+    console.log(`RTSP camera added: "${cameraName}" → ${url}`);
+    res.json({ success: true, camera: { id, name: cameraName, type: 'rtsp' } });
+});
+
+// List registered RTSP cameras
+app.get('/api/cameras/rtsp', requireAuth, (req, res) => {
+    const registry = loadCameraRegistry();
+    // Strip URLs from response (credentials stay server-side)
+    const cameras = registry.cameras.map(c => ({
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        addedAt: c.addedAt,
+        status: activeCameras.has(c.id) ? activeCameras.get(c.id).status : 'offline'
+    }));
+    res.json({ cameras });
+});
+
+// Remove an RTSP camera
+app.delete('/api/cameras/rtsp/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+
+    const registry = loadCameraRegistry();
+    const index = registry.cameras.findIndex(c => c.id === id);
+    if (index === -1) {
+        return res.status(404).json({ success: false, message: 'Camera not found' });
+    }
+
+    const removed = registry.cameras.splice(index, 1)[0];
+    saveCameraRegistry(registry);
+
+    stopRtspStream(id);
+
+    io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+
+    console.log(`RTSP camera removed: "${removed.name}" (${id})`);
+    res.json({ success: true });
+});
+
+// Rename an RTSP camera
+app.patch('/api/cameras/rtsp/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+        return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+
+    const registry = loadCameraRegistry();
+    const camera = registry.cameras.find(c => c.id === id);
+    if (!camera) {
+        return res.status(404).json({ success: false, message: 'Camera not found' });
+    }
+
+    camera.name = name.trim();
+    saveCameraRegistry(registry);
+
+    // Update active camera info
+    const info = activeCameras.get(id);
+    if (info) {
+        info.name = camera.name;
+        io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+    }
+
+    res.json({ success: true, camera: { id, name: camera.name } });
+});
+
+// Reconnect a specific RTSP camera
+app.post('/api/cameras/rtsp/:id/reconnect', requireAuth, (req, res) => {
+    const { id } = req.params;
+
+    const registry = loadCameraRegistry();
+    const camera = registry.cameras.find(c => c.id === id);
+    if (!camera) {
+        return res.status(404).json({ success: false, message: 'Camera not found' });
+    }
+
+    stopRtspStream(id);
+    startRtspStream(camera);
+
+    res.json({ success: true });
+});
+
 // Create HTTP server
 const httpServer = http.createServer(app);
 const io = socketIo(httpServer, {
@@ -154,10 +461,22 @@ async function startServer() {
         console.log(`🚀 HTTP Server running on port ${PORT}`);
         console.log(`📱 Camera App: http://localhost:${PORT}`);
         console.log(`📱 Admin Dashboard: http://localhost:${PORT}/admin`);
+
+        // Auto-reconnect registered RTSP cameras
+        reconnectRegisteredCameras();
     });
 }
 
 startServer();
+
+// Graceful shutdown
+function shutdown() {
+    console.log('Shutting down — stopping RTSP streams...');
+    stopAllRtspStreams();
+    process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // Unified Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -307,6 +626,10 @@ io.on('connection', (socket) => {
 
     // Handle admin requesting specific camera stream
     socket.on('request-camera-stream', (cameraId) => {
+        // RTSP cameras stream automatically — no action needed
+        const cameraInfo = activeCameras.get(cameraId);
+        if (cameraInfo && cameraInfo.type === 'rtsp') return;
+
         const targetSocket = io.sockets.sockets.get(cameraId);
         if (targetSocket) {
             targetSocket.emit('start-streaming', socket.id);
@@ -328,6 +651,26 @@ io.on('connection', (socket) => {
     // Handle admin disconnecting a camera
     socket.on('disconnect-camera', (data) => {
         const { cameraId } = data;
+
+        // Check if it's an RTSP camera
+        const cameraInfo = activeCameras.get(cameraId);
+        if (cameraInfo && cameraInfo.type === 'rtsp') {
+            console.log(`Admin ${socket.id} disconnecting RTSP camera ${cameraId}`);
+
+            // Remove from registry
+            const registry = loadCameraRegistry();
+            const index = registry.cameras.findIndex(c => c.id === cameraId);
+            if (index !== -1) {
+                registry.cameras.splice(index, 1);
+                saveCameraRegistry(registry);
+            }
+
+            stopRtspStream(cameraId);
+            io.to('admins').emit('camera-list-update', Array.from(activeCameras.values()));
+            return;
+        }
+
+        // Phone/tablet camera
         const targetSocket = io.sockets.sockets.get(cameraId);
         
         if (targetSocket) {

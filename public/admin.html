@@ -12,6 +12,7 @@
     <div class="header">
         <h1>Camera Monitor</h1>
         <div class="global-controls">
+            <button id="addCameraBtn" class="btn btn-primary" style="margin-right: 8px;">+ Add Camera</button>
             <button id="logoutBtn" class="btn secondary">Logout</button>
         </div>
     </div>
@@ -29,6 +30,35 @@
             <div class="modal-content">
                 <button id="closeModalBtn">×</button>
                 <img id="modalImage" src="" alt="Enlarged camera view" />
+            </div>
+        </div>
+
+        <!-- Add Camera Modal -->
+        <div id="addCameraModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2 style="margin-bottom: 20px; text-align: center; color: var(--text-primary);">Add RTSP Camera</h2>
+                <p style="text-align: center; color: var(--text-secondary); margin-bottom: 24px;">
+                    Connect an IP camera via its RTSP stream URL
+                </p>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 0.9em;">Camera Name</label>
+                    <input type="text" id="rtspName" placeholder="e.g. Front Door"
+                           style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05); 
+                                  border: 1px solid var(--glass-border); border-radius: 8px; 
+                                  color: var(--text-primary); font-size: 1em;" autocomplete="off">
+                </div>
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 0.9em;">RTSP URL</label>
+                    <input type="text" id="rtspUrl" placeholder="rtsp://192.168.1.100:8554/live"
+                           style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05); 
+                                  border: 1px solid var(--glass-border); border-radius: 8px; 
+                                  color: var(--text-primary); font-size: 1em;" autocomplete="off">
+                </div>
+                <div id="addCameraError" style="color: #ef4444; text-align: center; margin-bottom: 16px; display: none;"></div>
+                <div style="display: flex; gap: 12px; width: 100%;">
+                    <button id="cancelAddCamera" class="btn secondary" style="flex: 1;">Cancel</button>
+                    <button id="submitAddCamera" class="btn btn-primary" style="flex: 1;">Add Camera</button>
+                </div>
             </div>
         </div>
     </div>

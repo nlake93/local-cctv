@@ -21,3 +21,6 @@ Thumbs.db
 
 # Session / runtime
 *.pid
+
+# Camera registry (contains network details)
+cameras.json

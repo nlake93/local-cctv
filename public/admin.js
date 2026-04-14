@@ -9,6 +9,7 @@ class AdminDashboard {
         
         this.initSocketListeners();
         this.initLogout();
+        this.initAddCamera();
         this.requestCameraList();
     }
 
@@ -24,6 +25,79 @@ class AdminDashboard {
                 }
             });
         }
+    }
+
+    initAddCamera() {
+        const modal = document.getElementById('addCameraModal');
+        const addBtn = document.getElementById('addCameraBtn');
+        const cancelBtn = document.getElementById('cancelAddCamera');
+        const submitBtn = document.getElementById('submitAddCamera');
+        const errorEl = document.getElementById('addCameraError');
+        const nameInput = document.getElementById('rtspName');
+        const urlInput = document.getElementById('rtspUrl');
+
+        const openModal = () => {
+            modal.style.display = 'flex';
+            nameInput.value = '';
+            urlInput.value = '';
+            errorEl.style.display = 'none';
+            nameInput.focus();
+        };
+
+        const closeModal = () => {
+            modal.style.display = 'none';
+        };
+
+        const showError = (msg) => {
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+        };
+
+        addBtn.addEventListener('click', openModal);
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        const submitCamera = async () => {
+            const name = nameInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!url.startsWith('rtsp://')) {
+                showError('URL must start with rtsp://');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Adding...';
+
+            try {
+                const res = await fetch('/api/cameras/rtsp', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, url })
+                });
+                if (res.status === 401) {
+                    showError('Session expired — please refresh the page');
+                    return;
+                }
+                const data = await res.json();
+                if (res.ok) {
+                    closeModal();
+                } else {
+                    showError(data.message || 'Failed to add camera');
+                }
+            } catch (err) {
+                console.error('Add camera error:', err);
+                showError('Connection error — check server logs');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Add Camera';
+            }
+        };
+
+        submitBtn.addEventListener('click', submitCamera);
+        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') submitCamera(); });
+        nameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') urlInput.focus(); });
     }
 
     initSocketListeners() {
@@ -78,20 +152,54 @@ class AdminDashboard {
                 </div>
             `;
             grid.className = 'camera-grid';
+            this.cameras.clear();
             return;
         }
 
-        // Apply responsive grid class based on camera count
-        this.applyResponsiveGridClass(grid, cameras.length);
-        
-        grid.innerHTML = '';
-        cameras.forEach(camera => {
+        const currentIds = new Set(cameras.map(c => c.id));
+        const existingIds = new Set(this.cameras.keys());
+
+        // Check if cameras added or removed
+        const added = cameras.filter(c => !existingIds.has(c.id));
+        const removed = [...existingIds].filter(id => !currentIds.has(id));
+        const unchanged = cameras.filter(c => existingIds.has(c.id));
+
+        // Remove departed cameras
+        removed.forEach(id => {
+            const card = grid.querySelector(`[data-camera-id="${id}"]`);
+            if (card) card.remove();
+            this.cameras.delete(id);
+        });
+
+        // Update status badges on existing RTSP cameras (no rebuild)
+        unchanged.forEach(camera => {
+            this.cameras.set(camera.id, camera);
+            if (camera.type === 'rtsp') {
+                const card = grid.querySelector(`[data-camera-id="${camera.id}"]`);
+                if (card) {
+                    const badge = card.querySelector('.rtsp-badge');
+                    if (badge) {
+                        badge.className = `rtsp-badge ${this.getStatusClass(camera.status)}`;
+                        badge.textContent = this.getStatusLabel(camera.status);
+                    }
+                }
+            }
+        });
+
+        // Add new cameras
+        if (added.length > 0 || removed.length > 0) {
+            this.applyResponsiveGridClass(grid, cameras.length);
+        }
+        added.forEach(camera => {
             const cameraCard = this.createCameraCard(camera);
             grid.appendChild(cameraCard);
             this.cameras.set(camera.id, camera);
-            // Automatically start stream for each camera
             this.startStream(camera.id);
         });
+
+        // Remove "no cameras" message if present
+        const noMsg = grid.querySelector('.no-cameras');
+        if (noMsg) noMsg.remove();
     }
 
     applyResponsiveGridClass(grid, cameraCount) {
@@ -123,35 +231,83 @@ class AdminDashboard {
     createCameraCard(camera) {
         const card = document.createElement('div');
         card.className = 'camera-card';
-        card.dataset.cameraId = camera.id; // Bug 2: needed so disconnectCamera() can find the card
+        card.dataset.cameraId = camera.id;
+
+        const isRtsp = camera.type === 'rtsp';
+        const status = camera.status || 'connected';
+        const statusLabel = this.getStatusLabel(status);
+        const statusClass = this.getStatusClass(status);
+
         card.innerHTML = `
             <div class="camera-video" id="video-${camera.id}">
-                <span>Waiting for stream...</span>
+                <span>${isRtsp && status !== 'connected' ? statusLabel : 'Waiting for stream...'}</span>
             </div>
             <div class="camera-info">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    ${camera.name || 'Camera'}
+                    ${isRtsp ? `<span class="rtsp-badge ${statusClass}">${statusLabel}</span>` : ''}
+                </div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 8px;">
                 <button class="btn btn-primary" data-enlarge="${camera.id}" style="font-size: 0.8em; padding: 6px 12px;">Enlarge</button>
+                ${isRtsp && (status === 'offline' || status === 'disconnected' || status === 'error')
+                    ? `<button class="btn" data-reconnect="${camera.id}" style="font-size: 0.8em; padding: 6px 12px; background: var(--accent); border-color: var(--accent);">Reconnect</button>`
+                    : ''}
                 <button class="btn" data-disconnect="${camera.id}" style="font-size: 0.8em; padding: 6px 12px; background: #ef4444; border-color: #ef4444;">
-                    Disconnect
+                    ${isRtsp ? 'Remove' : 'Disconnect'}
                 </button>
             </div>
         `;
-        // Add enlarge button event
         setTimeout(() => {
             const enlargeBtn = card.querySelector('[data-enlarge]');
             if (enlargeBtn) {
                 enlargeBtn.addEventListener('click', () => this.enlargeStream(camera.id));
             }
             
-            // Add disconnect button event
             const disconnectBtn = card.querySelector('[data-disconnect]');
             if (disconnectBtn) {
-                disconnectBtn.addEventListener('click', () => this.disconnectCamera(camera.id));
+                disconnectBtn.addEventListener('click', () => this.disconnectCamera(camera.id, isRtsp));
+            }
+
+            const reconnectBtn = card.querySelector('[data-reconnect]');
+            if (reconnectBtn) {
+                reconnectBtn.addEventListener('click', () => this.reconnectRtspCamera(camera.id));
             }
         }, 0);
         return card;
     }
+
+    getStatusLabel(status) {
+        const labels = {
+            connecting: '⏳ Connecting',
+            connected: '🟢 Live',
+            disconnected: '🔴 Disconnected',
+            offline: '⚫ Offline',
+            error: '⚠️ Error'
+        };
+        return labels[status] || status;
+    }
+
+    getStatusClass(status) {
+        const classes = {
+            connecting: 'rtsp-status--connecting',
+            connected: 'rtsp-status--connected',
+            disconnected: 'rtsp-status--disconnected',
+            offline: 'rtsp-status--offline',
+            error: 'rtsp-status--error'
+        };
+        return classes[status] || '';
+    }
+
+    async reconnectRtspCamera(cameraId) {
+        try {
+            const res = await fetch(`/api/cameras/rtsp/${cameraId}/reconnect`, { method: 'POST' });
+            if (!res.ok) console.error('Reconnect failed');
+        } catch (err) {
+            console.error('Reconnect error:', err);
+        }
+    }
+
     enlargeStream(cameraId) {
         const videoContainer = document.getElementById(`video-${cameraId}`);
         const img = videoContainer ? videoContainer.querySelector('img') : null;
@@ -175,14 +331,16 @@ class AdminDashboard {
     }
 
     startStream(cameraId) {
-        this.socket.emit('request-camera-stream', cameraId);
+        const camera = this.cameras.get(cameraId);
+        // RTSP streams are pushed automatically by the server
+        if (!camera || camera.type !== 'rtsp') {
+            this.socket.emit('request-camera-stream', cameraId);
+        }
         this.activeStreams.add(cameraId);
-        // Show loading state
         const videoContainer = document.getElementById(`video-${cameraId}`);
         if (videoContainer) {
             videoContainer.innerHTML = '<span>📡 Waiting for stream...</span>';
         }
-        // updateActiveStreamsCount removed
     }
 
     // stopStream removed: not needed for auto-streaming
@@ -338,25 +496,30 @@ class AdminDashboard {
         this.updateQualityIndicator(cameraId, quality);
     }
 
-    disconnectCamera(cameraId) {
-        if (confirm('Are you sure you want to disconnect this camera?')) {
-            console.log(`Disconnecting camera ${cameraId}`);
-            
-            // Emit disconnect request to server
-            this.socket.emit('disconnect-camera', { cameraId });
-            
-            // Remove camera card immediately for better UX
-            const card = document.querySelector(`[data-camera-id="${cameraId}"]`);
-            if (card) {
-                card.style.animation = 'fadeOut 0.3s ease';
-                setTimeout(() => {
-                    if (card.parentNode) {
-                        card.parentNode.removeChild(card);
-                    }
-                    this.cameras.delete(cameraId);
-                    this.checkNoCameras();
-                }, 300);
+    async disconnectCamera(cameraId, isRtsp = false) {
+        const action = isRtsp ? 'remove' : 'disconnect';
+        if (!confirm(`Are you sure you want to ${action} this camera?`)) return;
+
+        console.log(`${action} camera ${cameraId}`);
+
+        if (isRtsp) {
+            try {
+                await fetch(`/api/cameras/rtsp/${cameraId}`, { method: 'DELETE' });
+            } catch (err) {
+                console.error('Failed to remove RTSP camera:', err);
             }
+        } else {
+            this.socket.emit('disconnect-camera', { cameraId });
+        }
+
+        const card = document.querySelector(`[data-camera-id="${cameraId}"]`);
+        if (card) {
+            card.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (card.parentNode) card.parentNode.removeChild(card);
+                this.cameras.delete(cameraId);
+                this.checkNoCameras();
+            }, 300);
         }
     }
 
