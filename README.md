@@ -85,6 +85,41 @@ The server starts on port `80` by default.
 | `http://YOUR_IP` | Camera client — open on any device to stream |
 | `http://YOUR_IP/admin` | Admin dashboard — monitor all cameras |
 
+## Running as a systemd Service (Linux)
+
+On Linux servers, you can install local-cctv as a systemd service so it
+starts on boot and restarts automatically on failure.
+
+```bash
+npm run install-service
+# or equivalently:
+sudo ./scripts/install-service.sh
+```
+
+What the installer does:
+
+- Writes `/etc/systemd/system/local-cctv.service`
+- Runs the process as your current (non-root) user
+- Loads environment from `<repo>/.env`
+- Grants `CAP_NET_BIND_SERVICE` so the app can bind to port 80 without root
+- Applies basic sandboxing (`NoNewPrivileges`, `PrivateTmp`, read-only home, etc.)
+- Enables the service on boot and starts it immediately
+
+Common commands:
+
+```bash
+sudo systemctl status  local-cctv
+sudo systemctl restart local-cctv
+sudo systemctl stop    local-cctv
+sudo journalctl -u     local-cctv -f    # tail logs
+```
+
+To uninstall:
+
+```bash
+npm run uninstall-service
+```
+
 ## Adding an RTSP Camera
 
 1. Open the admin dashboard at `http://YOUR_IP/admin`
