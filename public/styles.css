@@ -96,6 +96,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 10px;
 }
 
 .sound-toggle {
@@ -328,6 +329,17 @@ body {
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.05);
     transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.camera-video:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.camera-video:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .camera-video img {
@@ -544,33 +556,8 @@ body {
 }
 
 #closeModalBtn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
     z-index: 1010;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     line-height: 1;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-#closeModalBtn:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
 }
 
 #modalImage {
@@ -1105,6 +1092,455 @@ body {
 
 .zoom-slider::-moz-range-thumb:active {
     transform: scale(0.95);
+}
+
+/* ============================================================
+   Connection status pill (admin header)
+   ============================================================ */
+.conn-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.8em;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.25s ease;
+    user-select: none;
+}
+.conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    box-shadow: 0 0 6px currentColor;
+}
+.conn-status--live { color: #4ade80; }
+.conn-status--live .conn-dot {
+    background: #4ade80;
+    animation: pulse 2s infinite;
+}
+.conn-status--connecting { color: #facc15; }
+.conn-status--connecting .conn-dot {
+    background: #facc15;
+    animation: pulse 1s infinite;
+}
+.conn-status--offline { color: #f87171; }
+.conn-status--offline .conn-dot { background: #f87171; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(0.75); }
+}
+
+@media (max-width: 768px) {
+    .conn-status .conn-label { display: none; }
+}
+
+/* ============================================================
+   Empty state
+   ============================================================ */
+.empty-state {
+    text-align: center;
+    padding: 48px 32px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    max-width: 560px;
+    margin: 60px auto 0 auto;
+    animation: fadeIn 0.4s ease;
+}
+.empty-state__icon {
+    font-size: 3em;
+    margin-bottom: 16px;
+    opacity: 0.7;
+}
+.empty-state__title {
+    font-size: 1.3em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+.empty-state__subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 0.95em;
+}
+.empty-state__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+.empty-state__divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 0.8em;
+    letter-spacing: 1px;
+    margin: 20px 0;
+}
+.empty-state__divider::before,
+.empty-state__divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--glass-border);
+}
+.url-panel {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 4px;
+    max-width: 420px;
+    margin: 0 auto;
+}
+.url-panel__text {
+    flex: 1;
+    padding: 10px 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+    color: var(--accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+.url-panel__copy {
+    padding: 0 16px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+}
+.url-panel__copy:hover { background: var(--accent-hover); }
+
+/* ============================================================
+   Form fields (shared modal inputs)
+   ============================================================ */
+.form-field {
+    margin-bottom: 16px;
+    text-align: left;
+}
+.form-field label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1em;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.form-error {
+    color: #ef4444;
+    text-align: center;
+    margin-bottom: 16px;
+    font-size: 0.9em;
+    min-height: 1.2em;
+}
+.form-error:empty { display: none; }
+
+.modal-title {
+    margin-bottom: 8px;
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 1.4em;
+}
+.modal-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    font-size: 0.95em;
+}
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+.modal-actions .btn {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-danger-zone {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(239, 68, 68, 0.25);
+}
+.settings-danger-label {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #ef4444;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+/* Open-state for modals (.modal uses display:none by default, .is-open shows) */
+.modal.is-open {
+    display: flex;
+}
+
+/* ============================================================
+   Camera card extras — stale overlay, rename, snapshot
+   ============================================================ */
+.camera-card.is-stale .camera-video::after,
+.camera-card.is-offline .camera-video::after {
+    content: attr(data-stale-label);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    color: #f87171;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    z-index: 2;
+}
+.camera-card.is-stale .camera-video img { filter: grayscale(0.6) brightness(0.7); }
+.camera-card.is-offline .camera-video img { filter: grayscale(1) brightness(0.4); }
+
+.camera-name-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+.camera-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.icon-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    padding: 0;
+}
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+.icon-btn--danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #fca5a5;
+}
+
+.tile-snapshot-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 3;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+.camera-video:hover .tile-snapshot-btn,
+.camera-video:focus-within .tile-snapshot-btn { display: inline-flex; }
+.tile-snapshot-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ============================================================
+   Enlarge modal upgrades
+   ============================================================ */
+.enlarge-content {
+    width: 92vw !important;
+    height: 92vh !important;
+    max-width: none !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 12px;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+}
+.enlarge-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    width: 100%;
+}
+.enlarge-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1.05em;
+    min-width: 0;
+    overflow: hidden;
+}
+.enlarge-timestamp {
+    font-size: 0.8em;
+    color: var(--text-dim);
+    font-weight: 400;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.enlarge-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.enlarge-actions .icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1em;
+}
+#modalImage {
+    width: 100% !important;
+    height: calc(100% - 72px) !important;
+    flex: 1;
+    min-height: 0;
+    object-fit: contain;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--glass-border);
+}
+
+/* ============================================================
+   Toast stack + variants (shared)
+   ============================================================ */
+.toast-stack {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 3000;
+    pointer-events: none;
+}
+.toast-stack > .toast {
+    pointer-events: auto;
+}
+.toast--stacked {
+    position: static;
+    animation: slideInRight 0.25s ease-out;
+    min-width: 240px;
+    max-width: 360px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.toast--info {
+    background: rgba(20, 184, 166, 0.12);
+    border: 1px solid rgba(20, 184, 166, 0.4);
+    color: #5eead4;
+}
+.toast--success {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #6ee7b7;
+}
+.toast--error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+}
+.toast--warning {
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    color: #fde68a;
+}
+
+/* ============================================================
+   Camera-client in-page banner (replaces alert())
+   ============================================================ */
+.camera-banner {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 22px;
+    background: rgba(239, 68, 68, 0.92);
+    color: white;
+    border-radius: 12px;
+    font-weight: 600;
+    max-width: 88vw;
+    text-align: center;
+    z-index: 10000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: slideDown 0.3s ease;
+    line-height: 1.4;
+}
+@keyframes slideDown {
+    from { transform: translate(-50%, -120%); opacity: 0; }
+    to   { transform: translate(-50%, 0);    opacity: 1; }
 }
 
 /* RTSP Status Badges */

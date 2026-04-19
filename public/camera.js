@@ -326,7 +326,7 @@ class CameraApp {
             default:
                 errorMessage += error.message || 'Unknown error occurred.';
         }
-        alert(errorMessage);
+        this.showBanner(errorMessage);
         // Add debugging information
         console.error('Camera error details:', {
             name: error.name,
@@ -336,6 +336,17 @@ class CameraApp {
             protocol: location.protocol,
             hostname: location.hostname
         });
+    }
+
+    showBanner(message, duration = 6000) {
+        const existing = document.querySelector('.camera-banner');
+        if (existing) existing.remove();
+        const el = document.createElement('div');
+        el.className = 'camera-banner';
+        el.textContent = message;
+        el.addEventListener('click', () => el.remove());
+        document.body.appendChild(el);
+        if (duration > 0) setTimeout(() => el.remove(), duration);
     }
 
     initSocketListeners() {

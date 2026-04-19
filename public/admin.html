@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Camera monitoring dashboard">
-    
+    <meta name="theme-color" content="#0a0a0f">
     <title>Camera Monitor</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,58 +12,101 @@
     <div class="header">
         <h1>Camera Monitor</h1>
         <div class="global-controls">
-            <button id="addCameraBtn" class="btn btn-primary" style="margin-right: 8px;">+ Add Camera</button>
-            <button id="logoutBtn" class="btn secondary">Logout</button>
+            <div id="connStatus" class="conn-status conn-status--connecting" title="Server connection">
+                <span class="conn-dot"></span>
+                <span class="conn-label">Connecting…</span>
+            </div>
+            <button id="addCameraBtn" class="btn btn-primary">+ Add Camera</button>
+            <button id="logoutBtn" class="btn">Logout</button>
         </div>
     </div>
 
     <div class="dashboard">
         <div class="camera-grid" id="cameraGrid">
-            <div class="no-cameras">
-                <p>No cameras connected</p>
-                <p style="font-size: 0.85em; margin-top: 12px; color: var(--text-dim);">Open the camera app on a device to see it here</p>
-            </div>
+            <!-- Empty state rendered by admin.js -->
         </div>
 
-        <!-- Modal for enlarged stream -->
+        <!-- Enlarge modal -->
         <div id="enlargeModal">
-            <div class="modal-content">
-                <button id="closeModalBtn">×</button>
+            <div class="modal-content enlarge-content">
+                <div class="enlarge-toolbar">
+                    <div class="enlarge-title">
+                        <span id="enlargeName">Camera</span>
+                        <span id="enlargeTimestamp" class="enlarge-timestamp"></span>
+                    </div>
+                    <div class="enlarge-actions">
+                        <button id="enlargePrev" class="icon-btn" title="Previous camera (←)">‹</button>
+                        <button id="enlargeNext" class="icon-btn" title="Next camera (→)">›</button>
+                        <button id="enlargeSnapshot" class="icon-btn" title="Snapshot (S)">⤓</button>
+                        <button id="enlargeFullscreen" class="icon-btn" title="Fullscreen (F)">⛶</button>
+                        <button id="closeModalBtn" class="icon-btn icon-btn--danger" title="Close (Esc)">×</button>
+                    </div>
+                </div>
                 <img id="modalImage" src="" alt="Enlarged camera view" />
             </div>
         </div>
 
-        <!-- Add Camera Modal -->
-        <div id="addCameraModal" class="modal" style="display: none;">
+        <!-- Add Camera modal -->
+        <div id="addCameraModal" class="modal">
             <div class="modal-content">
-                <h2 style="margin-bottom: 20px; text-align: center; color: var(--text-primary);">Add RTSP Camera</h2>
-                <p style="text-align: center; color: var(--text-secondary); margin-bottom: 24px;">
-                    Connect an IP camera via its RTSP stream URL
-                </p>
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 0.9em;">Camera Name</label>
-                    <input type="text" id="rtspName" placeholder="e.g. Front Door"
-                           style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05); 
-                                  border: 1px solid var(--glass-border); border-radius: 8px; 
-                                  color: var(--text-primary); font-size: 1em;" autocomplete="off">
+                <h2 class="modal-title">Add RTSP Camera</h2>
+                <p class="modal-subtitle">Connect an IP camera via its RTSP stream URL</p>
+
+                <div class="form-field">
+                    <label for="rtspName">Camera Name</label>
+                    <input type="text" id="rtspName" class="form-input" placeholder="e.g. Front Door" autocomplete="off">
                 </div>
-                <div style="margin-bottom: 24px;">
-                    <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 0.9em;">RTSP URL</label>
-                    <input type="text" id="rtspUrl" placeholder="rtsp://192.168.1.100:8554/live"
-                           style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05); 
-                                  border: 1px solid var(--glass-border); border-radius: 8px; 
-                                  color: var(--text-primary); font-size: 1em;" autocomplete="off">
+                <div class="form-field">
+                    <label for="rtspUrl">RTSP URL</label>
+                    <input type="text" id="rtspUrl" class="form-input" placeholder="rtsp://192.168.1.100:8554/live" autocomplete="off">
                 </div>
-                <div id="addCameraError" style="color: #ef4444; text-align: center; margin-bottom: 16px; display: none;"></div>
-                <div style="display: flex; gap: 12px; width: 100%;">
-                    <button id="cancelAddCamera" class="btn secondary" style="flex: 1;">Cancel</button>
-                    <button id="submitAddCamera" class="btn btn-primary" style="flex: 1;">Add Camera</button>
+
+                <div id="addCameraError" class="form-error"></div>
+
+                <div class="modal-actions">
+                    <button id="cancelAddCamera" class="btn">Cancel</button>
+                    <button id="submitAddCamera" class="btn btn-primary">Add Camera</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings modal -->
+        <div id="renameModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title">Camera Settings</h2>
+                <div class="form-field">
+                    <label for="renameInput">Name</label>
+                    <input type="text" id="renameInput" class="form-input" autocomplete="off">
+                </div>
+                <div id="renameError" class="form-error"></div>
+                <div class="modal-actions">
+                    <button id="cancelRename" class="btn">Cancel</button>
+                    <button id="submitRename" class="btn btn-primary">Save</button>
+                </div>
+                <div class="settings-danger-zone">
+                    <button id="deleteCameraBtn" class="btn btn-danger btn-block">Remove camera</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm modal -->
+        <div id="confirmModal" class="modal">
+            <div class="modal-content">
+                <h2 id="confirmTitle" class="modal-title">Are you sure?</h2>
+                <p id="confirmMessage" class="modal-subtitle"></p>
+                <div class="modal-actions">
+                    <button id="confirmCancel" class="btn">Cancel</button>
+                    <button id="confirmOk" class="btn btn-danger">Confirm</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Toast container -->
+    <div id="toastStack" class="toast-stack"></div>
+
     <script src="/socket.io/socket.io.js"></script>
+    <script src="ui.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>
