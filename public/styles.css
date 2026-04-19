@@ -442,7 +442,8 @@ button { font-family: inherit; }
     flex-wrap: wrap;
     margin-bottom: 20px;
 }
-.empty-state__divider {
+.empty-state__divider,
+.modal-divider {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -453,12 +454,15 @@ button { font-family: inherit; }
     margin: 16px 0;
 }
 .empty-state__divider::before,
-.empty-state__divider::after {
+.empty-state__divider::after,
+.modal-divider::before,
+.modal-divider::after {
     content: "";
     flex: 1;
     height: 1px;
     background: var(--border);
 }
+.modal-divider { margin-top: 24px; }
 
 /* Stream URL panel */
 .url-panel {

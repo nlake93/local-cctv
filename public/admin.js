@@ -96,6 +96,11 @@ class AdminDashboard {
             nameInput.value = '';
             urlInput.value = '';
             errorEl.textContent = '';
+            const cameraUrl = `${location.origin}/`;
+            const urlEl = document.getElementById('addCameraUrl');
+            const qrEl = document.getElementById('addCameraQr');
+            if (urlEl) urlEl.textContent = cameraUrl;
+            if (qrEl) qrEl.src = `/api/qrcode?text=${encodeURIComponent(cameraUrl)}`;
             modal.classList.add('is-open');
             nameInput.focus();
         };
