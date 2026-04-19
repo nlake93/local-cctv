@@ -317,21 +317,21 @@ class AdminDashboard {
         const cameraUrl = `${location.origin}/`;
         grid.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state__icon">📹</div>
-                <div class="empty-state__title">No cameras connected yet</div>
+                <div class="empty-state__icon">${window.ui.icon('camera', '')}</div>
+                <div class="empty-state__title">No cameras connected</div>
                 <div class="empty-state__subtitle">
-                    Add an IP camera via RTSP, or use any phone / tablet as a camera.
+                    Add an IP camera via RTSP, or use any phone or tablet as a camera.
                 </div>
                 <div class="empty-state__actions">
-                    <button class="btn btn-primary" id="emptyAddBtn">+ Add RTSP Camera</button>
+                    <button class="btn btn-primary" id="emptyAddBtn">${window.ui.icon('plus')} Add RTSP camera</button>
                 </div>
-                <div class="empty-state__divider">OR USE A PHONE</div>
-                <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
-                    Open this URL on any phone / tablet:
+                <div class="empty-state__divider">Or use a phone</div>
+                <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 10px;">
+                    Open this URL on any phone or tablet
                 </div>
                 <div class="url-panel">
                     <div class="url-panel__text" id="emptyUrl">${cameraUrl}</div>
-                    <button class="url-panel__copy" id="emptyCopyBtn">Copy</button>
+                    <button class="url-panel__copy" id="emptyCopyBtn">${window.ui.icon('copy')} Copy</button>
                 </div>
             </div>
         `;
@@ -370,19 +370,19 @@ class AdminDashboard {
 
         card.innerHTML = `
             <div class="camera-video" id="video-${camera.id}" data-stale-label="" data-enlarge="${camera.id}" title="Click to enlarge" role="button" tabindex="0">
-                <span>${isRtsp && status !== 'connected' ? statusLabel : '📡 Waiting for stream…'}</span>
-                <button class="tile-snapshot-btn" data-snapshot="${camera.id}" title="Snapshot">⤓</button>
+                <span>${isRtsp && status !== 'connected' ? statusLabel : 'Waiting for stream…'}</span>
+                <button class="tile-snapshot-btn" data-snapshot="${camera.id}" title="Snapshot" aria-label="Snapshot">${window.ui.icon('download')}</button>
             </div>
             <div class="camera-info">
                 <div class="camera-name-wrap">
                     <span class="camera-name">${this.escape(camera.name || 'Camera')}</span>
                     ${isRtsp ? `<span class="rtsp-badge ${statusClass}">${statusLabel}</span>` : ''}
-                    <button class="icon-btn" data-rename="${camera.id}" title="Settings">⚙</button>
                 </div>
+                <button class="icon-btn" data-rename="${camera.id}" title="Settings" aria-label="Settings">${window.ui.icon('settings')}</button>
             </div>
             ${isRtsp && (status === 'offline' || status === 'disconnected' || status === 'error')
-                ? `<div style="display: flex; justify-content: flex-end; margin-top: 8px;">
-                    <button class="btn" data-reconnect="${camera.id}" style="font-size: 0.85em; padding: 8px 14px; min-width: 0; background: var(--accent); border-color: var(--accent); color: white;">Reconnect</button>
+                ? `<div style="display: flex; justify-content: flex-end;">
+                    <button class="btn" data-reconnect="${camera.id}">Reconnect</button>
                 </div>`
                 : ''}
         `;
@@ -412,11 +412,11 @@ class AdminDashboard {
 
     getStatusLabel(status) {
         const labels = {
-            connecting: '⏳ Connecting',
-            connected: '🟢 Live',
-            disconnected: '🔴 Disconnected',
-            offline: '⚫ Offline',
-            error: '⚠️ Error'
+            connecting: 'Connecting',
+            connected: 'Live',
+            disconnected: 'Disconnected',
+            offline: 'Offline',
+            error: 'Error'
         };
         return labels[status] || status;
     }
@@ -619,7 +619,7 @@ class AdminDashboard {
                 if (camera.type === 'rtsp' && (camera.status === 'offline' || camera.status === 'error')) {
                     card.classList.remove('is-stale');
                     card.classList.add('is-offline');
-                    video.setAttribute('data-stale-label', camera.status === 'error' ? '⚠️ Connection error' : '⚫ Offline');
+                    video.setAttribute('data-stale-label', camera.status === 'error' ? 'Connection error' : 'Offline');
                     continue;
                 }
                 if (!last) continue; // never received a frame yet — leave placeholder alone
@@ -627,11 +627,11 @@ class AdminDashboard {
                 if (age > OFFLINE_AFTER_MS) {
                     card.classList.remove('is-stale');
                     card.classList.add('is-offline');
-                    video.setAttribute('data-stale-label', `⚫ No signal — ${Math.floor(age / 1000)}s`);
+                    video.setAttribute('data-stale-label', `No signal — ${Math.floor(age / 1000)}s`);
                 } else if (age > STALE_AFTER_MS) {
                     card.classList.add('is-stale');
                     card.classList.remove('is-offline');
-                    video.setAttribute('data-stale-label', `⚠ No signal — ${Math.floor(age / 1000)}s`);
+                    video.setAttribute('data-stale-label', `No signal — ${Math.floor(age / 1000)}s`);
                 } else {
                     card.classList.remove('is-stale', 'is-offline');
                     video.setAttribute('data-stale-label', '');
@@ -695,7 +695,7 @@ class AdminDashboard {
 
     showPairingSuccess(camera) {
         this.removePairingRequest(camera.id);
-        window.ui.showToast({ type: 'success', message: `✓ ${camera.name} connected` });
+        window.ui.showToast({ type: 'success', message: `${camera.name} connected` });
     }
 
     // ------------------------------------------------------------------
