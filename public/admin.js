@@ -315,6 +315,7 @@ class AdminDashboard {
         const grid = document.getElementById('cameraGrid');
         grid.className = 'camera-grid';
         const cameraUrl = `${location.origin}/`;
+        const qrSrc = `/api/qrcode?text=${encodeURIComponent(cameraUrl)}`;
         grid.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state__icon">${window.ui.icon('camera', '')}</div>
@@ -331,20 +332,15 @@ class AdminDashboard {
                 </div>
                 <div class="url-panel">
                     <div class="url-panel__text" id="emptyUrl">${cameraUrl}</div>
-                    <button class="url-panel__copy" id="emptyCopyBtn">${window.ui.icon('copy')} Copy</button>
+                </div>
+                <div class="empty-state__qr">
+                    <img src="${qrSrc}" alt="QR code for camera URL" width="160" height="160">
+                    <div class="empty-state__qr-caption">Scan with a phone camera</div>
                 </div>
             </div>
         `;
         const addBtn = grid.querySelector('#emptyAddBtn');
-        const copyBtn = grid.querySelector('#emptyCopyBtn');
         if (addBtn) addBtn.addEventListener('click', () => document.getElementById('addCameraBtn').click());
-        if (copyBtn) copyBtn.addEventListener('click', async () => {
-            const ok = await window.ui.copyText(cameraUrl);
-            window.ui.showToast({
-                type: ok ? 'success' : 'error',
-                message: ok ? 'URL copied to clipboard' : 'Copy failed — select and copy manually'
-            });
-        });
     }
 
     applyResponsiveGridClass(grid, cameraCount) {

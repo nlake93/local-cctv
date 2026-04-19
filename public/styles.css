@@ -402,6 +402,9 @@ button { font-family: inherit; }
    Empty state
    ===================================================================== */
 .empty-state {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 100%;
     max-width: 520px;
     margin: 64px auto 0;
     padding: 32px;
@@ -466,7 +469,7 @@ button { font-family: inherit; }
 }
 .url-panel__text {
     flex: 1;
-    padding: 6px 10px;
+    padding: 8px 12px;
     background: var(--bg-inset);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
@@ -476,21 +479,30 @@ button { font-family: inherit; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    display: flex;
-    align-items: center;
+    text-align: center;
 }
-.url-panel__copy {
-    padding: 6px 12px;
-    background: var(--bg-surface-2);
-    color: var(--text);
+
+/* QR code for camera URL */
+.empty-state__qr {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.empty-state__qr img {
+    display: block;
+    padding: 10px;
+    background: var(--bg-inset);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease;
 }
-.url-panel__copy:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.empty-state__qr-caption {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
 
 /* =====================================================================
    Modals (shared)

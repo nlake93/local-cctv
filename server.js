@@ -8,6 +8,7 @@ const bcrypt = require('bcrypt');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = process.env.PORT || 80;
@@ -330,6 +331,25 @@ app.get('/admin.html', requireAuth, (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// QR code generator (SVG) for the given text. Protected: admin only.
+app.get('/api/qrcode', requireAuth, async (req, res) => {
+    const text = String(req.query.text || '').slice(0, 512);
+    if (!text) return res.status(400).send('text query param required');
+    try {
+        const svg = await QRCode.toString(text, {
+            type: 'svg',
+            margin: 1,
+            color: { dark: '#e6edf3', light: '#00000000' }
+        });
+        res.set('Content-Type', 'image/svg+xml');
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(svg);
+    } catch (err) {
+        console.error('QR generation failed:', err);
+        res.status(500).send('QR generation failed');
+    }
 });
 
 // --- RTSP Camera API Routes (protected) ---
