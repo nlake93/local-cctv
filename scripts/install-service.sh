@@ -22,7 +22,11 @@ die()  { echo "error: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
 
 if [[ $EUID -ne 0 ]]; then
-    die "This script must be run as root (try: sudo $0)"
+    if command -v sudo >/dev/null 2>&1; then
+        die "This script must be run as root (try: sudo $0)"
+    else
+        die "This script must be run as root"
+    fi
 fi
 
 if [[ ! -d /run/systemd/system ]]; then
@@ -50,7 +54,12 @@ RUN_USER="${SUDO_USER:-$(id -un)}"
 
 RUN_GROUP="$(id -gn "$RUN_USER")"
 
-NODE_BIN="$(sudo -u "$RUN_USER" bash -lc 'command -v node' || true)"
+NODE_BIN=""
+if [[ "$RUN_USER" == "root" || ! $(command -v sudo) ]]; then
+    NODE_BIN="$(command -v node || true)"
+else
+    NODE_BIN="$(sudo -u "$RUN_USER" bash -lc 'command -v node' || true)"
+fi
 [[ -z "$NODE_BIN" ]] && die "'node' not found on PATH for user '$RUN_USER'. Install Node.js first."
 
 [[ -f "${REPO_DIR}/server.js" ]] || die "server.js not found at ${REPO_DIR}/server.js"

@@ -91,9 +91,11 @@ On Linux servers, you can install local-cctv as a systemd service so it
 starts on boot and restarts automatically on failure.
 
 ```bash
+# if you're running as root (e.g. Raspberry Pi OS Lite default):
 npm run install-service
-# or equivalently:
-sudo ./scripts/install-service.sh
+
+# if you're a regular user with sudo:
+sudo npm run install-service
 ```
 
 What the installer does:
